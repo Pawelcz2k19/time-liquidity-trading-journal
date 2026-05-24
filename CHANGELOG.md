@@ -9,6 +9,25 @@ Pełna dokumentacja użytkownika funkcji journala znajduje się w **[USER_GUIDE.
 
 ---
 
+## [v7](https://github.com/Pawelcz2k19/time-liquidity-trading-journal/releases/tag/v7) — Solidne parsery OCR (XTB desktop/mobile, MT5, TopstepX)
+
+**Co nowego:**
+
+Przepisane parsery OCR pod realne dane ze zdjęć brokerów. Testy na 4 prawdziwych screenshotach (XTB desktop 4 trade'y, XTB mobile 2 trade'y, MT5 mobilny 3 trade'y, TopstepX 4 trade'y) — wszystkie 13 transakcji parsuje się poprawnie, z idealnymi cenami, ilościami, PnL i kierunkiem.
+
+**Najważniejsze poprawki:**
+
+1. **XTB desktop** — data odzyskiwana z głosowania na zmasakrowanych 8-cyfrowych ciągach (OCR mieszał `21.04.2026` w `ALDE` / `21042020`). PnL bez kropki (`5591`) automatycznie poprawiany na `55.91`. Znak PnL i kierunek (long/short) wyliczane z mnożnika CFD (`NAS100` = 20 USD / punkt / lot) zamiast polegać na zniekształconym "Buy/Sell".
+2. **MT5 mobile** — `US100.cash` poprawnie mapowany na `NAS100` (norm. symbolu strippuje kropki).
+3. **XTB mobile** — symbol dziedziczony z poprzedniego trade'a jeśli OCR wytnie nagłówek (np. `EDU +53.96 USD` zamiast `EG US100 CFD +53.96 USD`).
+4. **TopstepX** — sumaryczne `PnL: +$1543.00` (Total Day) odfiltrowane, brane są tylko per-contract Day PnL.
+
+**Jak działa:**
+
+Proces importu jest niezmieniony (Image / Paste text / Ctrl+V), wszystkie zmiany są pod spodem. Wynik parsowania jest dokładniejszy nawet gdy OCR jest brudny.
+
+---
+
 ## [v6](https://github.com/Pawelcz2k19/time-liquidity-trading-journal/releases/tag/v6) — Wklejanie tekstu + paste anywhere
 
 **Co nowego:**

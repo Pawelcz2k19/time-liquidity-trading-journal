@@ -64,13 +64,16 @@ export function parseTime(s: string): string | undefined {
 
 /** Normalize a broker symbol to a sensible canonical form. */
 export function normSymbol(raw: string): string {
-  const s = raw.trim().toUpperCase().replace(/[^A-Z0-9.]/g, "");
+  // Strip ALL non-alphanumerics (including dots, e.g. US100.cash -> US100CASH)
+  const s = raw.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
   // Common mappings
   const map: Record<string, string> = {
     "US100": "NAS100",
     "US100CASH": "NAS100",
     "USTEC": "NAS100",
     "NAS100CFD": "NAS100",
+    "NASDAQ100": "NAS100",
+    "NDX": "NAS100",
     "MNQM6": "MNQ",
     "MNQH6": "MNQ",
     "MNQU6": "MNQ",
@@ -82,6 +85,15 @@ export function normSymbol(raw: string): string {
   };
   return map[s] ?? s;
 }
+
+/** XTB CFD multipliers — USD per index point per 1.0 lot. Used to verify direction/sign when OCR drops the minus. */
+export const XTB_CFD_MULTIPLIERS: Record<string, number> = {
+  "NAS100": 20,
+  "US500": 50,
+  "US30": 5,
+  "GER40": 25,
+  "DAX": 25,
+};
 
 /** Estimate confidence based on field completeness. */
 export function estimateConfidence(t: Record<string, any>, importantFields: string[]): number {
