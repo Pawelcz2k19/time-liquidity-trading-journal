@@ -9,6 +9,17 @@ import {
   insertPlaybookSchema,
   insertSettingsSchema,
 } from "@shared/schema";
+import { z } from "zod";
+import rateLimit from "express-rate-limit";
+
+// Import payload schema: arrays are optional + each item validated via its insert schema (extended to tolerate a leading id field from a prior export).
+const importSchema = z.object({
+  mode: z.enum(["merge", "replace"]).default("merge"),
+  trades: z.array(insertTradeSchema.passthrough()).max(50000).optional(),
+  journals: z.array(insertJournalSchema.passthrough()).max(50000).optional(),
+  playbooks: z.array(insertPlaybookSchema.passthrough()).max(10000).optional(),
+  settings: insertSettingsSchema.partial().passthrough().optional(),
+});
 
 export async function registerRoutes(
   httpServer: Server,
@@ -16,6 +27,25 @@ export async function registerRoutes(
 ): Promise<Server> {
   // Allow large screenshot uploads (base64 data URLs)
   app.use(express.json({ limit: "25mb" }));
+
+  // Rate limit all API routes — public unauthenticated endpoint
+  const apiLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute window
+    limit: 200,           // max 200 requests/min per IP
+    standardHeaders: "draft-7",
+    legacyHeaders: false,
+    message: { error: "Too many requests, please slow down." },
+  });
+  // Stricter limiter for expensive bulk operations
+  const bulkLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    limit: 5,
+    standardHeaders: "draft-7",
+    legacyHeaders: false,
+    message: { error: "Import/export rate limit reached, please wait a minute." },
+  });
+  app.use("/api/", apiLimiter);
+  app.use(["/api/import", "/api/export"], bulkLimiter);
 
   // ===== Trades =====
   app.get("/api/trades", async (_req: Request, res: Response) => {
@@ -109,8 +139,9 @@ export async function registerRoutes(
   });
 
   app.post("/api/import", async (req: Request, res: Response) => {
-    const { mode = "merge", trades, journals, playbooks, settings } = req.body ?? {};
-    if (!["merge", "replace"].includes(mode)) return res.status(400).json({ error: "Invalid mode" });
+    const parsed = importSchema.safeParse(req.body ?? {});
+    if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+    const { mode, trades, journals, playbooks, settings } = parsed.data;
     res.json(await storage.importAll({ mode, trades, journals, playbooks, settings }));
   });
 

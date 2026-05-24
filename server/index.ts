@@ -24,6 +24,18 @@ app.use(
 
 app.use(express.urlencoded({ extended: false }));
 
+// Security headers — must run before routes
+app.use((_req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  // Allow embedding only from the trading course host(s); block everything else (clickjacking + cross-tenant iframes).
+  res.setHeader(
+    "Content-Security-Policy",
+    "frame-ancestors 'self' https://*.pplx.app https://www.perplexity.ai https://perplexity.ai https://*.perplexity.ai",
+  );
+  next();
+});
+
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
     hour: "numeric",
