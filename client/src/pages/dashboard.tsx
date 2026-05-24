@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { KpiCard } from "@/components/kpi-card";
+import { RiskNudge } from "@/components/risk-nudge";
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid,
   BarChart, Bar, Cell,
@@ -49,6 +50,9 @@ export default function Dashboard() {
           <Link href="/trades/new"><Button size="sm" data-testid="link-new-trade-dashboard"><PlusCircle className="w-4 h-4 mr-1" />New trade</Button></Link>
         </div>
       </div>
+
+      {/* Daily risk awareness — soft nudge */}
+      <RiskNudge variant="tile" hideWhenOk={false} />
 
       {/* KPI grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">

@@ -215,6 +215,74 @@ export function courseScore(trades: Trade[], journals: JournalEntry[]): number {
   return Math.round(profitScore + ruleScore + riskScore + journalScore);
 }
 
+// ===== Risk awareness =====
+export type RiskLevel = "ok" | "caution" | "alert";
+
+export interface RiskStatus {
+  level: RiskLevel;
+  todayR: number;             // sum of R for today's closed trades
+  todayPnl: number;           // net $ for today
+  todayTrades: number;        // closed trades today
+  consecutiveLosses: number;  // running streak of losses ending most recently
+  dailyLimitR: number;        // configured threshold (negative)
+  maxLosses: number;          // configured threshold
+  reasons: string[];          // human-readable triggers, empty if ok
+}
+
+function todayISO(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${dd}`;
+}
+
+export function computeRiskStatus(
+  trades: Trade[],
+  opts: { dailyLimitR: number; maxLosses: number },
+): RiskStatus {
+  const today = todayISO();
+  const closed = closedTrades(trades);
+
+  const todays = closed.filter((t) => t.date === today);
+  const todayR = todays.reduce((s, t) => s + (t.rMultiple ?? 0), 0);
+  const todayPnl = todays.reduce((s, t) => s + (t.netPnl ?? 0), 0);
+
+  // Consecutive losses ending with most recent closed trade (by date desc then id desc)
+  const ordered = [...closed].sort((a, b) => {
+    if (a.date !== b.date) return b.date.localeCompare(a.date);
+    return b.id - a.id;
+  });
+  let streak = 0;
+  for (const t of ordered) {
+    if ((t.netPnl ?? 0) < 0) streak++;
+    else break;
+  }
+
+  const reasons: string[] = [];
+  if (todayR <= opts.dailyLimitR) {
+    reasons.push(`Today's R (${todayR.toFixed(2)}R) has reached your daily limit of ${opts.dailyLimitR}R.`);
+  }
+  if (streak >= opts.maxLosses) {
+    reasons.push(`You've had ${streak} consecutive losses.`);
+  }
+
+  let level: RiskLevel = "ok";
+  if (reasons.length > 0) level = "alert";
+  else if (todayR <= opts.dailyLimitR * 0.75 || streak >= Math.max(1, opts.maxLosses - 1)) level = "caution";
+
+  return {
+    level,
+    todayR,
+    todayPnl,
+    todayTrades: todays.length,
+    consecutiveLosses: streak,
+    dailyLimitR: opts.dailyLimitR,
+    maxLosses: opts.maxLosses,
+    reasons,
+  };
+}
+
 // Helpers exposed for tag-key extractors used in groupBy:
 export const tagKeys = {
   setup: (t: Trade) => parseTags(t.setupTags),

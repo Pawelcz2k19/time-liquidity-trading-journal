@@ -34,18 +34,24 @@ export default function SettingsPage() {
     defaultFeePerContract: 0.85,
     currency: "USD",
     timezone: "America/New_York",
+    dailyLossLimitR: -2,
+    maxConsecutiveLosses: 3,
+    riskNudgesEnabled: true,
   });
 
   useEffect(() => {
     if (settings) {
       setForm({
-        accountSize: settings.accountSize,
-        rptPercent: settings.rptPercent,
-        defaultSymbol: settings.defaultSymbol,
-        defaultPointValue: settings.defaultPointValue,
-        defaultFeePerContract: settings.defaultFeePerContract,
-        currency: settings.currency,
-        timezone: settings.timezone,
+        accountSize: settings.accountSize ?? 50000,
+        rptPercent: settings.rptPercent ?? 1,
+        defaultSymbol: settings.defaultSymbol ?? "NQ",
+        defaultPointValue: settings.defaultPointValue ?? 20,
+        defaultFeePerContract: settings.defaultFeePerContract ?? 0.85,
+        currency: settings.currency ?? "USD",
+        timezone: settings.timezone ?? "America/New_York",
+        dailyLossLimitR: settings.dailyLossLimitR ?? -2,
+        maxConsecutiveLosses: settings.maxConsecutiveLosses ?? 3,
+        riskNudgesEnabled: settings.riskNudgesEnabled ?? true,
       });
     }
   }, [settings]);
@@ -253,6 +259,61 @@ export default function SettingsPage() {
           {saveMutation.isPending ? "Saving..." : "Save Settings"}
         </Button>
       </div>
+
+      {/* Risk Awareness Nudges */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Risk Awareness Nudges</CardTitle>
+          <CardDescription>
+            Soft reminders — they appear when you're approaching or have crossed your daily limits. Never block you from logging trades; just a moment to pause and check yourself.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between gap-4 p-3 rounded-md border">
+            <div>
+              <div className="text-sm font-medium">Enable risk nudges</div>
+              <div className="text-xs text-muted-foreground">Show today's R, P&amp;L, loss streak, and gentle warnings.</div>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.riskNudgesEnabled}
+                onChange={(e) => setForm({ ...form, riskNudgesEnabled: e.target.checked })}
+                className="sr-only peer"
+                data-testid="toggle-risk-nudges"
+              />
+              <div className="w-11 h-6 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-background after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary" />
+            </label>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label>Daily loss limit (R)</Label>
+              <Input
+                type="number"
+                step="0.5"
+                value={form.dailyLossLimitR}
+                onChange={(e) => setForm({ ...form, dailyLossLimitR: Number(e.target.value) })}
+                disabled={!form.riskNudgesEnabled}
+                data-testid="input-daily-loss-limit"
+              />
+              <div className="text-xs text-muted-foreground mt-1">Negative value, e.g. -2 means warn when today's R drops to or below -2R.</div>
+            </div>
+            <div>
+              <Label>Max consecutive losses</Label>
+              <Input
+                type="number"
+                min="1"
+                step="1"
+                value={form.maxConsecutiveLosses}
+                onChange={(e) => setForm({ ...form, maxConsecutiveLosses: Number(e.target.value) })}
+                disabled={!form.riskNudgesEnabled}
+                data-testid="input-max-consecutive-losses"
+              />
+              <div className="text-xs text-muted-foreground mt-1">Nudge appears after this many losses in a row.</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <Separator />
 

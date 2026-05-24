@@ -136,6 +136,10 @@ export const settings = sqliteTable("settings", {
   defaultFeePerContract: real("default_fee_per_contract").default(0.5),
   currency: text("currency").default("USD"),
   timezone: text("timezone").default("America/New_York"),
+  // Risk awareness nudges (soft — never block trade entry, just inform)
+  dailyLossLimitR: real("daily_loss_limit_r").default(-2.0), // e.g. -2 means warn at -2R today
+  maxConsecutiveLosses: integer("max_consecutive_losses").default(3),
+  riskNudgesEnabled: integer("risk_nudges_enabled", { mode: "boolean" }).default(true),
 });
 
 export const insertSettingsSchema = createInsertSchema(settings).omit({

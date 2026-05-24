@@ -93,9 +93,24 @@ CREATE TABLE IF NOT EXISTS settings (
   default_point_value REAL DEFAULT 2.0,
   default_fee_per_contract REAL DEFAULT 0.5,
   currency TEXT DEFAULT 'USD',
-  timezone TEXT DEFAULT 'America/New_York'
+  timezone TEXT DEFAULT 'America/New_York',
+  daily_loss_limit_r REAL DEFAULT -2.0,
+  max_consecutive_losses INTEGER DEFAULT 3,
+  risk_nudges_enabled INTEGER DEFAULT 1
 );
 `);
+
+// Defensive migrations for existing DBs that pre-date the risk-nudge columns.
+function safeAddColumn(table: string, colDef: string) {
+  try {
+    sqlite.exec(`ALTER TABLE ${table} ADD COLUMN ${colDef}`);
+  } catch (e: any) {
+    if (!String(e?.message ?? '').includes('duplicate column name')) throw e;
+  }
+}
+safeAddColumn('settings', 'daily_loss_limit_r REAL DEFAULT -2.0');
+safeAddColumn('settings', 'max_consecutive_losses INTEGER DEFAULT 3');
+safeAddColumn('settings', 'risk_nudges_enabled INTEGER DEFAULT 1');
 
 // Helpers to compute derived fields
 function computeDerived(t: Partial<InsertTrade> & { entryPrice: number; stopPrice: number; quantity: number; pointValue: number; direction: string; exitPrice?: number | null; feesTotal?: number | null; }) {
