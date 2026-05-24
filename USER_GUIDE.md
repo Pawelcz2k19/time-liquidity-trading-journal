@@ -12,13 +12,14 @@ Pełny przewodnik po wszystkich funkcjach Trading Journala. Pisany krok po kroku
 2. [Dashboard](#dashboard)
 3. [Trade Log](#trade-log)
 4. [Add / Edit Trade](#add--edit-trade)
-5. [Daily Journal](#daily-journal)
-6. [Playbooks](#playbooks)
-7. [Reports](#reports)
-8. [Settings](#settings)
-9. [Risk Awareness Nudges](#risk-awareness-nudges)
-10. [Export / Import danych](#export--import-danych)
-11. [FAQ](#faq)
+5. [Import ze zdjęcia (OCR)](#import-ze-zdjęcia-ocr)
+6. [Daily Journal](#daily-journal)
+7. [Playbooks](#playbooks)
+8. [Reports](#reports)
+9. [Settings](#settings)
+10. [Risk Awareness Nudges](#risk-awareness-nudges)
+11. [Export / Import danych](#export--import-danych)
+12. [FAQ](#faq)
 
 ---
 
@@ -114,6 +115,85 @@ Po wpisaniu entry, stop i exit apka sama liczy R-multiple. Np. entry 20000, stop
 2. Wpisz wszystko póki świeże, łącznie z emocjami
 3. Wrzuć screenshot z TradingView / NinjaTrader — później przy review masz pełen kontekst
 4. Bądź szczery z mistake/emotion tagami — to jedyna droga żeby wyłapać wzorce w Reports
+
+---
+
+## Import ze zdjęcia (OCR)
+
+Zamiast przepisywać trade'y ręcznie, możesz wrzucić screen z brokera i apka wyciągnie dane sama.
+
+### Jak zacząć
+
+1. Wejdź w **Trades**
+2. Kliknij **Import from image** (obok New trade)
+3. Trzy sposoby wrzucenia zdjęcia:
+   - **Drag & drop** — przeciągnij plik(i) na pole
+   - **Kliknięcie** — otwiera dialog wyboru plików
+   - **Paste** — zrób screenshot na telefonie/PC i wklej **Ctrl+V** (Cmd+V na Mac)
+4. Możesz wrzucić **kilka zdjęć naraz** — z różnych brokerów nawet
+
+### Co dzieje się dalej
+
+1. **OCR (3–10 sekund)** — Tesseract.js czyta tekst ze zdjęcia *lokalnie w przeglądarce*. Nic nie leci na żaden serwer, żadne AI, żadne koszty.
+2. **Detekcja brokera** — apka rozpoznaje czy to XTB, MT5, TopstepX itd. po słowach kluczowych
+3. **Preview** — pojawia się tabela z wyciągniętymi trade'ami, edytowalna, z podświetleniem niepewnych pól
+
+### Wspierani brokerzy
+
+| Broker | Skuteczność | Co wyciąga |
+|---|---|---|
+| XTB desktop / web | wysoka | data, symbol, kierunek, entry/exit, wolumen, P&L |
+| XTB mobile ("Moje Transakcje") | wysoka | data, symbol, kierunek, wolumen, entry, P&L |
+| MetaTrader 5 mobile (PL/IT/EN) | wysoka | data+godzina, symbol, kierunek, wolumen, entry/exit, P&L |
+| TopstepX / Tradovate | średnia | symbol, P&L (entry/exit zwykle nie widać) |
+| NinjaTrader, IBKR | best-effort | co da się wyczytać |
+| Inne brokery | generic fallback | symbol, kierunek, P&L — reszta ręcznie |
+
+### Preview — edycja przed importem
+
+W preview każda kolumna jest edytowalna:
+
+- **Checkbox** po lewej — odznacz żeby pominąć dany wiersz
+- **Żółte tło pola** — oznacza że OCR nie znalazł albo nie był pewny. Wpisz/popraw.
+- **Conf. badge** (zielony/bursztynowy/czerwony) — ogólna pewność dla danego trade'a
+- **🗑 koszyk** — usuń trade z importu
+- **Show raw OCR text** — zobacz surowy tekst który odczytał Tesseract (debug)
+
+### Co wypełniać, co zostawić
+
+Apka wpisuje sensowne defaulty dla brakujących pól:
+- **Brak daty** → dzisiaj
+- **Brak godziny** → 09:30
+- **Brak symbolu** → NAS100
+- **Brak stop price** → 0.5% od entry (placeholder — popraw w trade detail!)
+- **Brak entry/exit** → 0
+- **pointValue** → 1 (dla CFD; popraw dla futures — NQ=20, MNQ=2, ES=50, MES=5)
+
+### Po imporcie
+
+Każdy zaimportowany trade dostaje notatkę `Imported from <broker>`. Żeby uzupełnić:
+
+1. **Wejdź w trade w Trade Log** (klik ołówek)
+2. Ustaw **stop price** — *kluczowe*, bez tego R-multiple będzie złe
+3. Ustaw **pointValue** jeśli to futures (NQ/MNQ/ES/MES)
+4. Dodaj **setup tag** (z playbooka), **mistake tags**, **emotion tags**
+5. Wrzuć screenshot z TradingView
+
+Dopiero po tym statystyki w Reports będą prawdziwe.
+
+### Tips
+
+- **Najlepsze zdjęcia OCR:** ostre, duży zoom, tylko widok historii bez paska narzędzi/pulpitu
+- **Telefon:** zrób screen w wysokiej rozdzielczości, nie kompresuj
+- **Wiele brokerów jednocześnie:** wrzucasz 3 screeny — z XTB, z MT5, z TopstepX — każdy jest przetwarzany osobno z własnym parserem
+- **Złe odczyty?** Klik **Show raw OCR text** żeby zobaczyć co zobaczył Tesseract — pomoże zdiagnozować
+
+### Ograniczenia
+
+- **Stop price nigdy nie jest na screenie historii** — zawsze musisz dodać ręcznie
+- **R-multiple liczone po dodaniu stopu** — zanim dodasz stop, R = 0
+- **Ucięte tabele** (np. TopstepX z obciętą kolumną Qty) — wyciągnie tylko widoczne pola
+- **Nieostre/za ciemne screeny** — OCR może pomylić 0/O, 1/I, 5/S itp.; preview pozwala poprawić
 
 ---
 

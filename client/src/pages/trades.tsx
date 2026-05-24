@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatCurrency, formatR, parseTags, pnlClass } from "@/lib/format";
 import { PlusCircle, Search, Pencil, ArrowUpDown, Filter } from "lucide-react";
+import { ImportFromImageButton } from "@/components/import-from-image";
 
 type SortKey = "date" | "symbol" | "netPnl" | "rMultiple";
 type SortDir = "asc" | "desc";
@@ -89,9 +90,12 @@ export default function TradesPage() {
           <h1 className="text-xl font-semibold">Trade log</h1>
           <p className="text-sm text-muted-foreground">{trades.length} total · {filtered.length} shown</p>
         </div>
-        <Link href="/trades/new" data-testid="link-new-trade-top">
-          <Button><PlusCircle className="w-4 h-4 mr-1" /> New trade</Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <ImportFromImageButton />
+          <Link href="/trades/new" data-testid="link-new-trade-top">
+            <Button><PlusCircle className="w-4 h-4 mr-1" /> New trade</Button>
+          </Link>
+        </div>
       </div>
 
       {/* Filter bar */}

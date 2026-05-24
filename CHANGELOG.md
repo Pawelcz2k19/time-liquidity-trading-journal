@@ -9,6 +9,58 @@ Pełna dokumentacja użytkownika funkcji journala znajduje się w **[USER_GUIDE.
 
 ---
 
+## [v5](https://github.com/Pawelcz2k19/time-liquidity-trading-journal/releases/tag/v5) — Import trade'ów ze zdjęcia (OCR)
+
+**Co nowego:**
+
+Możesz teraz wrzucić screen z brokera (XTB desktop, XTB mobile, MetaTrader 5, TopstepX, Tradovate, NinjaTrader, IBKR) i apka **sama wyczyta trade'y** — bez ręcznego przepisywania, bez AI, bez kosztów.
+
+**Jak to działa:**
+
+- **Tesseract.js** robi OCR w przeglądarce (offline, lokalnie — żadne dane nie lecą nigdzie)
+- **Broker detector** rozpoznaje którego brokera dotyczy zdjęcie po słowach kluczowych (`Zysk/strata` → XTB, `Total Day PnL` → TopstepX, `Bilancio` → MT5 itd.)
+- **Parsery per broker** wyciągają trade'y z surowego tekstu
+- **Preview** z edytowalną tabelą — wszystkie pola pokazane przed importem, żółtym podświetlone te które OCR pominął albo które trzeba uzupełnić
+
+**Wspierane brokery:**
+
+| Broker | Co wyciąga |
+|---|---|
+| XTB desktop | data, symbol, kierunek, ceny entry/exit, wolumen, P&L |
+| XTB mobile | data, symbol, kierunek, wolumen, entry price, P&L |
+| MetaTrader 5 (mobile) | data+godzina, symbol, kierunek, wolumen, entry/exit, P&L |
+| TopstepX / Tradovate | symbol, P&L per kontrakt (entry/exit zwykle nie widoczne na screenie) |
+| Generic fallback | dowolny inny broker — best-effort |
+
+**Jak używać:**
+
+1. Wejdź w **Trades** → kliknij **Import from image**
+2. Przeciągnij screen z brokera (możesz wrzucić kilka naraz) — lub wklej z clipboardu **Ctrl+V**
+3. Czekaj 3–10s aż Tesseract przeczyta zdjęcia (lokalnie)
+4. W preview sprawdź i popraw co trzeba — zaznacz/odznacz checkboxami które trade'y zaimportować
+5. Klik **Import N trades** — wszystko leci do bazy
+6. Po imporcie otwórz każdy trade i ustaw stop price (potrzebny do liczenia R-multiple), tagi setupu, screenshot
+
+**Co OCR potrafi a czego nie:**
+- ✅ Ostre, kontrastowe screeny — wysoka skuteczność (>90%)
+- ✅ Wiele zdjęć naraz, wiele brokerów wymieszanych
+- ⚠ Ucięte tabele (np. brakuje kolumny exit) — wyciągnie co widać, resztę uzupełnisz ręcznie
+- ❌ Stop price — brokerzy rzadko go pokazują w historii, musisz dodać sam
+
+**Filozofia:**
+Zero AI = zero kosztów = zero wysyłania danych nigdzie. Wszystko liczy się w twojej przeglądarce na twoim telefonie/komputerze. Preview zawsze pokazuje co wyciągnęło — nigdy nie zapisze nic bez twojego potwierdzenia.
+
+---
+
+## [v4](https://github.com/Pawelcz2k19/time-liquidity-trading-journal/releases/tag/v4) — Documentation: CHANGELOG + USER_GUIDE
+
+**Co nowego:**
+- Dodano `CHANGELOG.md` — historia wszystkich wersji w polskim
+- Dodano `USER_GUIDE.md` — kompletny przewodnik użytkownika krok po kroku
+- Konwencja: każdy commit pushowany do GitHuba dostaje kolejny numer (v5, v6...) i odpowiadający mu Release
+
+---
+
 ## [v3](https://github.com/Pawelcz2k19/time-liquidity-trading-journal/releases/tag/v3) — Soft Risk Awareness Nudges
 
 **Co nowego:**
@@ -92,4 +144,4 @@ Otwórz [stronę journala](https://www.perplexity.ai/computer/a/time-liquidity-t
 
 ## Konwencja wersjonowania
 
-Każdy commit pushowany do GitHuba dostaje kolejny numer (v4, v5...) oraz odpowiadający mu **GitHub Release** z opisem zmian. Ten plik aktualizujemy razem z każdą nową wersją.
+Każdy commit pushowany do GitHuba dostaje kolejny numer (v6, v7...) oraz odpowiadający mu **GitHub Release** z opisem zmian. Ten plik aktualizujemy razem z każdą nową wersją.
