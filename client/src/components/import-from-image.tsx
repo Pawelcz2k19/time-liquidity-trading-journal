@@ -1,19 +1,24 @@
-// ===== Import From Image — modal =====
-// Tesseract OCR + broker-specific parsers, then a preview table where the user
-// can edit every field before bulk-saving via POST /api/trades.
+// ===== Import From Image / Text — modal =====
+// Three input modes:
+//   1. Image upload / drag-drop → Tesseract OCR → parsers
+//   2. Paste image (Ctrl+V inside modal OR anywhere on Trades page) → OCR → parsers
+//   3. Paste text (Ctrl+V text snippet OR typed into textarea) → parsers directly (no OCR)
+//
+// All paths converge on the preview table.
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Image as ImageIcon, Upload, X, Trash2, Loader2 } from "lucide-react";
+import { Image as ImageIcon, Upload, X, Trash2, Loader2, Type, ClipboardPaste } from "lucide-react";
 import { runOcr } from "@/lib/ocr/ocr";
 import { normalize } from "@/lib/ocr/utils";
 import { parseText } from "@/lib/ocr/parsers";
@@ -28,11 +33,15 @@ interface EditableTrade extends ExtractedTrade {
 
 let nextId = 1;
 
+type InputMode = "image" | "text";
+
 export function ImportFromImageButton() {
   const [open, setOpen] = useState(false);
   const [stage, setStage] = useState<Stage>("idle");
+  const [mode, setMode] = useState<InputMode>("image");
   const [progress, setProgress] = useState(0);
   const [files, setFiles] = useState<File[]>([]);
+  const [textInput, setTextInput] = useState("");
   const [extracted, setExtracted] = useState<EditableTrade[]>([]);
   const [brokerLabel, setBrokerLabel] = useState<string>("");
   const [rawText, setRawText] = useState<string>("");
@@ -42,8 +51,10 @@ export function ImportFromImageButton() {
 
   const reset = () => {
     setStage("idle");
+    setMode("image");
     setProgress(0);
     setFiles([]);
+    setTextInput("");
     setExtracted([]);
     setBrokerLabel("");
     setRawText("");
@@ -92,8 +103,41 @@ export function ImportFromImageButton() {
     if (allTrades.length === 0) {
       toast({
         title: "No trades found",
-        description: "Try a clearer screenshot, or use the raw text view below to add manually.",
+        description: "Try a clearer screenshot, or paste text instead.",
       });
+    }
+  }, [toast]);
+
+  // Parse plain text directly without OCR — much faster and more accurate when
+  // the user can copy text from the broker's web UI.
+  const handleText = useCallback((text: string) => {
+    const norm = normalize(text);
+    if (!norm.trim()) {
+      toast({ title: "Empty input", description: "Paste or type some broker text." });
+      return;
+    }
+    setStage("ocr");
+    setProgress(50);
+    try {
+      const result = parseText(norm);
+      const trades: EditableTrade[] = result.trades.map(t => ({
+        ...t, _id: nextId++, _selected: true,
+      }));
+      setExtracted(trades);
+      setRawText(`=== Pasted text (${result.brokerLabel}) ===\n${norm}`);
+      setBrokerLabel(result.brokerLabel);
+      setStage("preview");
+      setProgress(100);
+      if (trades.length === 0) {
+        toast({
+          title: "No trades found",
+          description: "Couldn't recognize trades in the pasted text. Try a screenshot instead.",
+        });
+      }
+    } catch (err) {
+      console.error("Text parse failed", err);
+      toast({ title: "Parse error", description: String(err) });
+      setStage("idle");
     }
   }, [toast]);
 
@@ -103,14 +147,64 @@ export function ImportFromImageButton() {
     handleFiles(dropped);
   }, [handleFiles]);
 
+  // Paste handler used inside the modal. Handles both images and text.
   const onPaste = useCallback((e: React.ClipboardEvent) => {
     const items = Array.from(e.clipboardData.items);
     const imgs = items
       .filter(i => i.type.startsWith("image/"))
       .map(i => i.getAsFile())
       .filter((f): f is File => f != null);
-    if (imgs.length) handleFiles(imgs);
-  }, [handleFiles]);
+    if (imgs.length) {
+      e.preventDefault();
+      handleFiles(imgs);
+      return;
+    }
+    // No image — try text
+    const text = e.clipboardData.getData("text/plain");
+    if (text && text.trim().length > 10 && stage === "idle") {
+      e.preventDefault();
+      setMode("text");
+      setTextInput(text);
+      handleText(text);
+    }
+  }, [handleFiles, handleText, stage]);
+
+  // Global paste listener — captures Ctrl+V anywhere on the page when modal is
+  // closed, automatically opens the modal with the pasted content.
+  useEffect(() => {
+    if (open) return; // modal has its own paste handler
+    const onGlobalPaste = (e: ClipboardEvent) => {
+      // Skip if user is typing into an input/textarea
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) {
+        return;
+      }
+      const items = e.clipboardData ? Array.from(e.clipboardData.items) : [];
+      const imgs = items
+        .filter(i => i.type.startsWith("image/"))
+        .map(i => i.getAsFile())
+        .filter((f): f is File => f != null);
+      if (imgs.length) {
+        e.preventDefault();
+        setOpen(true);
+        // Defer so the modal mounts before we set state
+        setTimeout(() => handleFiles(imgs), 50);
+        return;
+      }
+      const text = e.clipboardData?.getData("text/plain") ?? "";
+      if (text && text.trim().length > 10) {
+        e.preventDefault();
+        setOpen(true);
+        setTimeout(() => {
+          setMode("text");
+          setTextInput(text);
+          handleText(text);
+        }, 50);
+      }
+    };
+    window.addEventListener("paste", onGlobalPaste);
+    return () => window.removeEventListener("paste", onGlobalPaste);
+  }, [open, handleFiles, handleText]);
 
   const updateField = (id: number, field: keyof ExtractedTrade, value: any) => {
     setExtracted(prev => prev.map(t =>
@@ -192,38 +286,103 @@ export function ImportFromImageButton() {
     <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) reset(); }}>
       <DialogTrigger asChild>
         <Button variant="outline" data-testid="btn-import-image">
-          <ImageIcon className="w-4 h-4 mr-1" /> Import from image
+          <ClipboardPaste className="w-4 h-4 mr-1" /> Import / paste
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto" onPaste={onPaste}>
         <DialogHeader>
-          <DialogTitle>Import trades from broker screenshot</DialogTitle>
+          <DialogTitle>Import trades from your broker</DialogTitle>
         </DialogHeader>
 
         {stage === "idle" && (
-          <div
-            onDrop={onDrop}
-            onDragOver={(e) => e.preventDefault()}
-            onClick={() => inputRef.current?.click()}
-            className="border-2 border-dashed border-muted-foreground/30 rounded-lg p-10 text-center cursor-pointer hover:border-muted-foreground/60 transition"
-            data-testid="dropzone"
-          >
-            <Upload className="w-12 h-12 mx-auto mb-3 text-muted-foreground" />
-            <p className="font-medium">Drop screenshots here</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              or click to upload · or paste with <kbd className="text-xs px-1.5 py-0.5 bg-muted rounded">Ctrl+V</kbd>
+          <div className="space-y-4">
+            {/* Mode switcher */}
+            <div className="flex gap-2 border-b">
+              <button
+                onClick={() => setMode("image")}
+                className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition ${
+                  mode === "image"
+                    ? "border-primary text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+                data-testid="tab-image"
+              >
+                <ImageIcon className="w-4 h-4 inline mr-1.5" /> Image / screenshot
+              </button>
+              <button
+                onClick={() => setMode("text")}
+                className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition ${
+                  mode === "text"
+                    ? "border-primary text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+                data-testid="tab-text"
+              >
+                <Type className="w-4 h-4 inline mr-1.5" /> Paste text
+              </button>
+            </div>
+
+            {mode === "image" && (
+              <div
+                onDrop={onDrop}
+                onDragOver={(e) => e.preventDefault()}
+                onClick={() => inputRef.current?.click()}
+                className="border-2 border-dashed border-muted-foreground/30 rounded-lg p-10 text-center cursor-pointer hover:border-muted-foreground/60 transition"
+                data-testid="dropzone"
+              >
+                <Upload className="w-12 h-12 mx-auto mb-3 text-muted-foreground" />
+                <p className="font-medium">Drop screenshots here</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  or click to upload · or paste with <kbd className="text-xs px-1.5 py-0.5 bg-muted rounded">Ctrl+V</kbd>
+                </p>
+                <p className="text-xs text-muted-foreground mt-3">
+                  Supports XTB (desktop + mobile), MetaTrader 5, TopstepX, Tradovate. Multiple images at once.
+                </p>
+                <input
+                  ref={inputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  hidden
+                  onChange={(e) => e.target.files && handleFiles(Array.from(e.target.files))}
+                />
+              </div>
+            )}
+
+            {mode === "text" && (
+              <div className="space-y-3">
+                <div className="flex items-start gap-2 text-xs text-muted-foreground bg-muted/40 p-2.5 rounded">
+                  <ClipboardPaste className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                  <div>
+                    Paste text copied from your broker (e.g. select rows in the web platform and Ctrl+C).
+                    Faster and more accurate than OCR — no image processing needed.
+                  </div>
+                </div>
+                <Textarea
+                  placeholder={"Paste broker text here...\n\nExample (XTB):\nUS100 CFD Buy 2525362075 0.1 21.04.2026 15:36 26 764.78 21.04.2026 15:58 26 813.94 Moje Transakcje 98.32"}
+                  value={textInput}
+                  onChange={(e) => setTextInput(e.target.value)}
+                  className="min-h-[200px] font-mono text-xs"
+                  data-testid="text-input"
+                />
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setTextInput("")} disabled={!textInput}>
+                    Clear
+                  </Button>
+                  <Button
+                    onClick={() => handleText(textInput)}
+                    disabled={!textInput.trim()}
+                    data-testid="btn-parse-text"
+                  >
+                    <Type className="w-4 h-4 mr-1" /> Parse text
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            <p className="text-[11px] text-muted-foreground text-center">
+              Tip: you can also paste anywhere on the Trades page — the import dialog opens automatically.
             </p>
-            <p className="text-xs text-muted-foreground mt-3">
-              Supports XTB (desktop + mobile), MetaTrader 5, TopstepX, Tradovate. Multiple images at once.
-            </p>
-            <input
-              ref={inputRef}
-              type="file"
-              accept="image/*"
-              multiple
-              hidden
-              onChange={(e) => e.target.files && handleFiles(Array.from(e.target.files))}
-            />
           </div>
         )}
 
@@ -231,8 +390,16 @@ export function ImportFromImageButton() {
           <div className="py-10 text-center space-y-4">
             <Loader2 className="w-10 h-10 mx-auto animate-spin text-primary" />
             <div>
-              <p className="font-medium">Reading {files.length} screenshot{files.length === 1 ? "" : "s"}...</p>
-              <p className="text-sm text-muted-foreground">This runs locally in your browser — no upload, no AI.</p>
+              <p className="font-medium">
+                {mode === "text"
+                  ? "Parsing text..."
+                  : `Reading ${files.length} screenshot${files.length === 1 ? "" : "s"}...`}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {mode === "text"
+                  ? "Direct text parsing — no OCR needed."
+                  : "This runs locally in your browser — no upload, no AI."}
+              </p>
             </div>
             <Progress value={progress} className="max-w-md mx-auto" />
             <p className="text-xs text-muted-foreground">{progress}%</p>

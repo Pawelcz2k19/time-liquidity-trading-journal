@@ -120,23 +120,38 @@ Po wpisaniu entry, stop i exit apka sama liczy R-multiple. Np. entry 20000, stop
 
 ## Import ze zdjęcia (OCR)
 
-Zamiast przepisywać trade'y ręcznie, możesz wrzucić screen z brokera i apka wyciągnie dane sama.
+Zamiast przepisywać trade'y ręcznie, możesz wrzucić screen z brokera — albo wkleić tekst skopiowany z brokera — i apka wyciągnie dane sama.
+
+### Cztery sposoby importu
+
+1. **Drag & drop zdjęcia** — najprostsze, działa na desktopie
+2. **Kliknięcie** — otwiera dialog wyboru plików
+3. **Paste anywhere** — **Ctrl+V (Cmd+V)** w dowolnym miejscu strony Trades:
+   - Zawartość schowka to obrazek → automatycznie otwiera się modal z OCR
+   - Zawartość schowka to tekst → modal otwiera się w trybie **Paste text** i od razu parsuje
+   - W inputach/textarea paste działa normalnie — nie przejmuje
+4. **Paste text mode** — zakładka **Paste text** w modalu importu, wklej/wpisz ręcznie tekst, klik **Parse text**. **Szybciej i dokładniej niż OCR**, bo bez ryzyka błędów typu 0↔O.
 
 ### Jak zacząć
 
 1. Wejdź w **Trades**
-2. Kliknij **Import from image** (obok New trade)
-3. Trzy sposoby wrzucenia zdjęcia:
-   - **Drag & drop** — przeciągnij plik(i) na pole
-   - **Kliknięcie** — otwiera dialog wyboru plików
-   - **Paste** — zrób screenshot na telefonie/PC i wklej **Ctrl+V** (Cmd+V na Mac)
-4. Możesz wrzucić **kilka zdjęć naraz** — z różnych brokerów nawet
+2. Kliknij **Import / paste** (obok New trade) — lub po prostu **Ctrl+V** w dowolnym miejscu
+3. Możesz wrzucić **kilka zdjęć naraz** — z różnych brokerów nawet
 
 ### Co dzieje się dalej
 
 1. **OCR (3–10 sekund)** — Tesseract.js czyta tekst ze zdjęcia *lokalnie w przeglądarce*. Nic nie leci na żaden serwer, żadne AI, żadne koszty.
 2. **Detekcja brokera** — apka rozpoznaje czy to XTB, MT5, TopstepX itd. po słowach kluczowych
 3. **Preview** — pojawia się tabela z wyciągniętymi trade'ami, edytowalna, z podświetleniem niepewnych pól
+
+### Kiedy użyć ktorego trybu
+
+| Sytuacja | Najlepszy sposób |
+|---|---|
+| Broker w przeglądarce, możesz zaznaczyć tekst | **Paste text** (Ctrl+C w brokerze → Ctrl+V w journalu) |
+| Aplikacja desktopowa brokera (XStation, MT5) | Screenshot → Ctrl+V |
+| Telefon | Screenshot → drag & drop pliku |
+| Wiele trade'ów z różnych brokerów | Drag & drop kilku obrazków naraz |
 
 ### Wspierani brokerzy
 

@@ -9,6 +9,38 @@ Pełna dokumentacja użytkownika funkcji journala znajduje się w **[USER_GUIDE.
 
 ---
 
+## [v6](https://github.com/Pawelcz2k19/time-liquidity-trading-journal/releases/tag/v6) — Wklejanie tekstu + paste anywhere
+
+**Co nowego:**
+
+Dwa kolejne sposoby na import trade'ów, oba szybsze niż OCR ze zdjęcia.
+
+1. **Paste text mode** — zakładka **Paste text** obok **Image / screenshot** w modalu importu. Wklejasz surowy tekst skopiowany z brokera (zaznacz tabelkę → Ctrl+C) i parser działa **bez OCR** — szybciej, dokładniej, bez ryzyka literacych błędów OCR.
+
+2. **Global paste anywhere** — jesteś na stronie **Trades**, robisz Ctrl+V (lub Cmd+V) gdziekolwiek na stronie. Apka sama wykrywa zawartość schowka:
+   - **Obrazek** → otwiera modal i odpala OCR
+   - **Tekst** → otwiera modal w trybie tekstu i od razu parsuje
+   - **Inputy/textarea** — omijane, normalny paste działa tam jak zwykle
+
+**Jak używać:**
+
+- **Z desktopu brokera**: na stronie z historią trade'ów zaznacz tabelę (Ctrl+A albo myszką), Ctrl+C → przejdź do journala, Trades → Ctrl+V → modal otwiera się z gotowymi danymi
+- **Ze zdjęcia (telefon/PC)**: zrób screenshot, skopiuj do schowka, na stronie Trades Ctrl+V → OCR automatycznie odpala się
+- **Ręczny tekst**: kliknij **Import / paste** → zakładka **Paste text** → wklej/wpisz → **Parse text**
+
+**Zmiany techniczne:**
+- `client/src/components/import-from-image.tsx`: nowe state `mode: "image" | "text"`, `handleText()` parsuje bez OCR
+- Globalny `window.addEventListener("paste", ...)` w useEffect, omija inputy/textarea/contenteditable
+- Modal title zmieniony na *"Import trades from your broker"*
+- Przycisk z **Import from image** na **Import / paste**
+
+**Dlaczego paste text bywa lepszy niż paste zdjęcie:**
+- Brak błędów OCR (0 ↔ O, 1 ↔ I, 5 ↔ S)
+- Brak ładowania Tesseract (3–10s oszczędności)
+- Więcej brokery wspieranych — nawet jeśli nie ma sztywnego parsera, generic fallback działa lepiej na czystym tekście
+
+---
+
 ## [v5](https://github.com/Pawelcz2k19/time-liquidity-trading-journal/releases/tag/v5) — Import trade'ów ze zdjęcia (OCR)
 
 **Co nowego:**
@@ -144,4 +176,4 @@ Otwórz [stronę journala](https://www.perplexity.ai/computer/a/time-liquidity-t
 
 ## Konwencja wersjonowania
 
-Każdy commit pushowany do GitHuba dostaje kolejny numer (v6, v7...) oraz odpowiadający mu **GitHub Release** z opisem zmian. Ten plik aktualizujemy razem z każdą nową wersją.
+Każdy commit pushowany do GitHuba dostaje kolejny numer (v7, v8...) oraz odpowiadający mu **GitHub Release** z opisem zmian. Ten plik aktualizujemy razem z każdą nową wersją.
